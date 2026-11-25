@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TireMaster Pro — Шиномонтаж</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #d6dae0;
+            --bg-pattern:
+                repeating-linear-gradient(45deg, rgba(0,0,0,0.045) 0 2px, transparent 2px 16px),
+                repeating-linear-gradient(-45deg, rgba(0,0,0,0.045) 0 2px, transparent 2px 16px);
+            --surface-color: #ffffff;
+            --text-color: #1a1f26;
+            --hint-color: #6b7580;
+            --primary-color: #2481cc;
+            --primary-hover: #1b6cae;
+            --accent: #ffb400;
+            --border-color: #c9cfd7;
+            --card-shadow: 0 6px 18px rgba(20, 30, 45, 0.12);
+            --badge-bg: #e8eff7;
+        }
+
+        .dark-theme {
+            --bg-color: #11171e;
+            --bg-pattern:
+                repeating-linear-gradient(45deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 16px),
+                repeating-linear-gradient(-45deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 16px);
+            --surface-color: #1b2531;
+            --text-color: #f1f4f8;
+            --hint-color: #94a3b3;
+            --primary-color: #2ea6ff;
+            --primary-hover: #1a8ad8;
+            --border-color: #2b3b50;
+            --card-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+            --badge-bg: #25364a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: var(--bg-pattern);
+            background-attachment: fixed;
+            color: var(--text-color);
+            padding-bottom: 90px;
+        }
+
+        header {
+            background-color: #1d232a;
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -7px;
+            height: 7px;
+            background: repeating-linear-gradient(45deg, #ffb400 0 12px, #1b1b1b 12px 24px);
+        }
+
+        .logo-block h1 { font-size: 18px; font-weight: 800; color: #ffffff; }
+        .logo-block p { font-size: 12px; color: #aab4bf; }
+
+        .header-actions { display: flex; gap: 8px; }
+
+        .btn-icon {
+            background: rgba(255, 255, 255, 0.12);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .container {
+            padding: 22px 16px 16px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ---------- 3D HERO (майстерня) ---------- */
+        .hero {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 16px;
+            border: 1px solid #0d1116;
+            box-shadow: var(--card-shadow);
+            height: 240px;
+            touch-action: pan-y;
+            background:
+                linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 76%, #2b3037 76%, #171b20 100%),
+                radial-gradient(circle at 50% 40%, rgba(255,255,255,0.13), transparent 62%),
+                radial-gradient(circle, rgba(255,255,255,0.12) 1.4px, transparent 1.9px) 0 0 / 20px 20px,
+                linear-gradient(180deg, #3d4650, #252a31);
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 76%;
+            height: 7px;
+            background: repeating-linear-gradient(45deg, #ffb400 0 12px, #1b1b1b 12px 24px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #wheelCanvas {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
+        }
+
+        #wheelCanvas:active { cursor: grabbing; }
+
+        .hero-chip {
+            position: absolute;
+            z-index: 2;
+            top: 12px;
+            left: 12px;
+            background: #ffb400;
+            color: #1b1b1b;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 6px 11px;
+            border-radius: 999px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+        }
+
+        .hero-hint {
+            position: absolute;
+            z-index: 2;
+            bottom: 8px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 11px;
+            color: #b9c3cf;
+            pointer-events: none;
+        }
+
+        .hero-fallback {
+            display: none;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+        }
+
+        .configurator-card {
+            background-color: var(--surface-color);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .configurator-title {
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--hint-color);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .radio-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .radio-btn {
+            background: var(--bg-color);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 10px 6px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .radio-btn small { color: var(--hint-color); font-weight: 500; }
+
+        .radio-btn.active {
+            border-color: var(--primary-color);
+            background: var(--badge-bg);
+            color: var(--primary-color);
+        }
+
+        .tabs {
+            display: flex;
+            background: var(--surface-color);
+            border-radius: 14px;
+            padding: 4px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--card-shadow);
+        }
+
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 4px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--hint-color);
+            cursor: pointer;
+            border-radius: 10px;
+        }
+
+        .tab.active {
+            background: var(--primary-color);
+            color: #ffffff;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .service-card {
+            background: var(--surface-color);
+            border-radius: 16px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--card-shadow);
+            border: 2px solid transparent;
+            cursor: pointer;
+            gap: 12px;
+        }
+
+        .service-card.selected { border-color: var(--primary-color); }
+
+        .service-card.focused { box-shadow: 0 0 0 3px rgba(255, 180, 0, 0.55), var(--card-shadow); }
+
+        .service-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: var(--badge-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .service-info { flex: 1; }
+        .service-info h3 { font-size: 15px; margin-bottom: 4px; }
+        .service-info p { font-size: 12px; color: var(--hint-color); }
+
+        .service-price {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--primary-color);
+            white-space: nowrap;
+        }
+
+        .checkbox-custom {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-color);
+            flex-shrink: 0;
+        }
+
+        .service-card.selected .checkbox-custom {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .service-card.selected .checkbox-custom::after {
+            content: '✓';
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .form-section {
+            background: var(--surface-color);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .form-group { margin-bottom: 14px; }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--hint-color);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-color);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-input:focus { border-color: var(--primary-color); }
+
+        .slots-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .slot-btn {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+
+        .slot-btn.selected {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .summary-card {
+            background: var(--surface-color);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .summary-total {
+            font-size: 18px;
+            font-weight: 800;
+            border-top: 1px solid var(--border-color);
+            padding-top: 10px;
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .bottom-action {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1d232a;
+            padding: 12px 16px;
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .bottom-action::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: -6px;
+            height: 6px;
+            background: repeating-linear-gradient(45deg, #ffb400 0 12px, #1b1b1b 12px 24px);
+        }
+
+        .main-btn {
+            flex: 1;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .main-btn:active { transform: scale(0.98); }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .status-new { background: #ff980020; color: #ff9800; }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: var(--hint-color);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-block">
+            <h1>🔧 TireMaster Pro</h1>
+            <p>Швидкий шиномонтаж та балансування</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="toggleTheme()">🌙 Тема</button>
+            <button class="btn-icon" onclick="fillTestData()">⚡ Тест</button>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <div class="hero">
+            <canvas id="wheelCanvas"></canvas>
+            <div class="hero-fallback" id="heroFallback">🛞</div>
+            <div class="hero-chip" id="heroChip">Перевзування · R14–R16</div>
+            <div class="hero-hint">Крутіть пальцем ↔ · Оберіть послугу, щоб побачити її в 3D</div>
+        </div>
+
+        <div class="configurator-card">
+            <div class="configurator-title">Тип авто та радіус коліс</div>
+            <div class="radio-group">
+                <div class="radio-btn active" onclick="setCarType('sedan', 1.0, this)">Легковий<br><small>R14–R16</small></div>
+                <div class="radio-btn" onclick="setCarType('suv', 1.3, this)">Кросовер<br><small>R17–R18</small></div>
+                <div class="radio-btn" onclick="setCarType('bus', 1.6, this)">Бус / SUV<br><small>R19+</small></div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('catalog')">1. Послуги</div>
+            <div class="tab" onclick="switchTab('booking')">2. Запис</div>
+            <div class="tab" onclick="switchTab('orders')">3. Мої записи (<span id="ordersCount">0</span>)</div>
+        </div>
+
+        <div id="tab-catalog" class="tab-content active">
+            <div id="servicesList"></div>
+        </div>
+
+        <div id="tab-booking" class="tab-content">
+            <div class="form-section">
+                <div class="form-group">
+                    <label>Номер автомобіля (Держномер)</label>
+                    <input type="text" id="carNumber" class="form-input" placeholder="AA 7777 OH">
+                </div>
+                <div class="form-group">
+                    <label>Пост шиномонтажу</label>
+                    <select id="postNumber" class="form-input">
+                        <option value="Бокс №1 (Підйомник)">Бокс №1 (Підйомник)</option>
+                        <option value="Бокс №2 (Стенд)">Бокс №2 (Стенд)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Оберіть час візиту</label>
+                    <div class="slots-grid">
+                        <div class="slot-btn selected" onclick="selectSlot('10:00', this)">10:00</div>
+                        <div class="slot-btn" onclick="selectSlot('11:30', this)">11:30</div>
+                        <div class="slot-btn" onclick="selectSlot('13:00', this)">13:00</div>
+                        <div class="slot-btn" onclick="selectSlot('15:00', this)">15:00</div>
+                        <div class="slot-btn" onclick="selectSlot('16:30', this)">16:30</div>
+                        <div class="slot-btn" onclick="selectSlot('18:00', this)">18:00</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Контактний телефон</label>
+                    <input type="tel" id="clientPhone" class="form-input" value="+380 97 123 45 67">
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-row">
+                    <span>Обрано послуг:</span>
+                    <span id="summaryCount">0</span>
+                </div>
+                <div class="summary-row">
+                    <span>Орієнтовний час:</span>
+                    <span id="summaryTime">—</span>
+                </div>
+                <div class="summary-total">
+                    <span>До сплати:</span>
+                    <span id="summaryTotal">0 ₴</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-orders" class="tab-content">
+            <div id="myOrdersList" class="empty-state">
+                У вас поки немає активних записів. Оберіть послуги у каталозі та оформіть запис.
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-action">
+        <button class="main-btn" id="mainButton" onclick="handleMainButtonClick()">Оформити запис (0 ₴)</button>
+    </div>
+
+    <script>
+        let currentMultiplier = 1.0;
+        let currentCarType = 'sedan';
+        let selectedSlotTime = '10:00';
+        let currentTab = 'catalog';
+        const orders = [];
+
+        const carTypes = {
+            sedan: { rim: 0.62, tube: 0.40, short: 'R14–R16' },
+            suv:   { rim: 0.74, tube: 0.35, short: 'R17–R18' },
+            bus:   { rim: 0.86, tube: 0.31, short: 'R19+' }
+        };
+
+        // time: '' = час не показуємо (послуга не займає часу майстра на місці)
+        const baseServices = [
+            { id: 1, icon: '🛞', name: 'Сезонне перевзування (4 колеса)', desc: 'Зняття, монтаж, балансування', basePrice: 800, minutes: 40, time: '40 хв' },
+            { id: 2, icon: '⚖️', name: 'Фінішне балансування коліс', desc: 'Усунення биття та вібрацій', basePrice: 400, minutes: 20, time: '20 хв' },
+            { id: 3, icon: '🩹', name: 'Ремонт проколу шини', desc: 'Встановлення кордової латки', basePrice: 250, minutes: 15, time: '15 хв' },
+            { id: 4, icon: '📦', name: 'Сезонне зберігання шин (місяць)', desc: 'Зберігання на сухому складі', basePrice: 600, minutes: 0, time: '' },
+            { id: 5, icon: '💨', name: 'Підкачка шин азотом', desc: 'Краще збереження тиску', basePrice: 200, minutes: 10, time: '10 хв' },
+            { id: 6, icon: '🔩', name: 'Прокатка литих дисків', desc: 'Відновлення геометрії диску', basePrice: 500, minutes: 30, time: '30 хв' }
+        ];
+
+        const sceneLabels = {
+            0: 'Колесо',
+            1: 'Перевзування',
+            2: 'Балансування',
+            3: 'Ремонт проколу',
+            4: 'Зберігання шин',
+            5: 'Азот',
+            6: 'Прокатка дисків'
+        };
+
+        let selectedServices = [1];
+        let focusService = 1; // послуга, яку зараз показує 3D
+
+        /* ================= 3D ================= */
+        let renderer, scene, camera, pivot, current = null;
+        let dragging = false, lastX = 0, lastY = 0, dragY = 0, dragX = 0;
+        let popScale = 0.5, sceneTime = 0, lastFrame = 0;
+        const baseY = -0.6;
+
+        const clamp01 = x => Math.min(1, Math.max(0, x));
+        const easeOut = x => 1 - Math.pow(1 - clamp01(x), 3);
+
+        function mat(color, rough, metal, extra) {
+            return new THREE.MeshStandardMaterial(Object.assign({ color: color, roughness: rough, metalness: metal }, extra || {}));
+        }
+
+        function disposeGroup(group) {
+            group.traverse(o => {
+                if (o.geometry) o.geometry.dispose();
+                if (o.material) o.material.dispose();
+            });
+        }
+
+        function wheelDims(cfg) {
+            return { w: cfg.tube * 1.6, outerR: cfg.rim + cfg.tube * 0.85 };
+        }
+
+        function makeTire(cfg) {
+            const d = wheelDims(cfg);
+            const g = new THREE.Group();
+            const tire = new THREE.Mesh(new THREE.TorusGeometry(d.outerR, cfg.tube, 28, 80), mat(0x1a1a1e, 0.9, 0.05));
+            tire.scale.z = 0.8;
+            g.add(tire);
+
+            const treadMat = mat(0x111114, 1, 0);
+            const treadGeo = new THREE.BoxGeometry(0.07, 0.13, d.w * 0.95);
+            const count = 56;
+            for (let i = 0; i < count; i++) {
+                const a = (i / count) * Math.PI * 2;
+                const r = d.outerR + cfg.tube - 0.01;
+                const m = new THREE.Mesh(treadGeo, treadMat);
+                m.position.set(Math.cos(a) * r, Math.sin(a) * r, 0);
+                m.rotation.z = a;
+                g.add(m);
+            }
+            return g;
+        }
+
+        function makeRim(cfg) {
+            const d = wheelDims(cfg);
+            const w = d.w;
+            const g = new THREE.Group();
+            const rimMat = mat(0xc9d1da, 0.25, 0.95);
+            const lipMat = mat(0xc9d1da, 0.25, 0.95, { emissive: 0xff7a1a, emissiveIntensity: 0 });
+
+            const barrelGeo = new THREE.CylinderGeometry(cfg.rim, cfg.rim, w * 0.9, 56, 1, true);
+            barrelGeo.rotateX(Math.PI / 2);
+            g.add(new THREE.Mesh(barrelGeo, mat(0xc9d1da, 0.3, 0.9, { side: THREE.DoubleSide })));
+
+            [-1, 1].forEach(s => {
+                const lip = new THREE.Mesh(new THREE.TorusGeometry(cfg.rim, 0.035, 12, 56), lipMat);
+                lip.position.z = s * w * 0.45;
+                g.add(lip);
+            });
+
+            const spokeMat = mat(0xdfe5ec, 0.2, 1);
+            for (let i = 0; i < 5; i++) {
+                const a = (i / 5) * Math.PI * 2;
+                const spoke = new THREE.Mesh(new THREE.BoxGeometry(cfg.rim * 0.92, 0.13, 0.07), spokeMat);
+                spoke.position.set(Math.cos(a) * cfg.rim * 0.48, Math.sin(a) * cfg.rim * 0.48, w * 0.22);
+                spoke.rotation.z = a;
+                g.add(spoke);
+            }
+
+            const hubGeo = new THREE.CylinderGeometry(cfg.rim * 0.24, cfg.rim * 0.24, 0.14, 32);
+            hubGeo.rotateX(Math.PI / 2);
+            const hub = new THREE.Mesh(hubGeo, spokeMat);
+            hub.position.z = w * 0.24;
+            g.add(hub);
+
+            const boltMat = mat(0x2b2f36, 0.4, 0.8);
+            for (let i = 0; i < 5; i++) {
+                const a = (i / 5) * Math.PI * 2 + Math.PI / 5;
+                const boltGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.05, 12);
+                boltGeo.rotateX(Math.PI / 2);
+                const bolt = new THREE.Mesh(boltGeo, boltMat);
+                bolt.position.set(Math.cos(a) * cfg.rim * 0.15, Math.sin(a) * cfg.rim * 0.15, w * 0.24 + 0.08);
+                g.add(bolt);
+            }
+
+            g.userData.lipMat = lipMat;
+            return g;
+        }
+
+        /* ---- Сцени під кожну послугу ---- */
+        function buildScene(id, cfg) {
+            const g = new THREE.Group();
+            const d = wheelDims(cfg);
+            const w = d.w, outerR = d.outerR;
+            let update = function () {};
+            let baseX = 0.15;
+
+            if (id === 0) {
+                // просто колесо
+                const wh = new THREE.Group();
+                wh.add(makeRim(cfg), makeTire(cfg));
+                g.add(wh);
+                update = (t, dt) => { wh.rotation.z -= dt * 0.8; };
+            }
+
+            if (id === 1) {
+                // ПЕРЕВЗУВАННЯ: шина знімається з диска і одягається назад
+                const rim = makeRim(cfg), tire = makeTire(cfg);
+                g.add(rim, tire);
+                g.position.z = -1;
+                update = (t) => {
+                    const p = (Math.sin(t * 1.1 - 1.2) + 1) / 2;
+                    tire.position.z = p * p * (3 - 2 * p) * 2.0;
+                    rim.rotation.z = -t * 0.5;
+                };
+            }
+
+            if (id === 2) {
+                // БАЛАНСУВАННЯ: колесо на валу, спочатку б'є, потім набиваються вантажики
+                const wh = new THREE.Group();
+                wh.add(makeRim(cfg), makeTire(cfg));
+                g.add(wh);
+
+                const shaftGeo = new THREE.CylinderGeometry(0.06, 0.06, w * 3, 16);
+                shaftGeo.rotateX(Math.PI / 2);
+                g.add(new THREE.Mesh(shaftGeo, mat(0x3a4048, 0.4, 0.8)));
+
+                const weightMat = mat(0xff9a2e, 0.35, 0.6, { emissive: 0xff7a1a, emissiveIntensity: 0.1 });
+                const weights = [];
+                [0.5, 2.6, 4.4].forEach(a => {
+                    const m = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.32, 0.13), weightMat);
+                    const r = cfg.rim - 0.05;
+                    m.position.set(Math.cos(a) * r, Math.sin(a) * r, w * 0.36);
+                    m.rotation.z = a;
+                    wh.add(m);
+                    weights.push(m);
+                });
+
+                update = (t, dt) => {
+                    const cyc = t % 6;
+                    wh.rotation.z -= dt * 7;
+                    const wob = cyc < 2.2 ? 0.035 : 0;
+                    wh.position.x = Math.sin(t * 45) * wob;
+                    wh.position.y = Math.cos(t * 38) * wob;
+                    weights.forEach((m, i) => {
+                        const s = cyc < 2.2 ? 0 : easeOut((cyc - 2.2 - i * 0.3) / 0.4);
+                        m.scale.setScalar(Math.max(0.001, s));
+                    });
+                    weightMat.emissiveIntensity = (cyc > 2.2 && cyc < 3.6) ? 0.9 : 0.1;
+                };
+            }
+
+            if (id === 3) {
+                // РЕМОНТ ПРОКОЛУ: цвях виймається, ставиться латка-грибок
+                const wh = new THREE.Group();
+                wh.add(makeRim(cfg), makeTire(cfg));
+                g.add(wh);
+
+                const a = 1.0;
+                const r = outerR + cfg.tube;
+                const dir = new THREE.Vector3(Math.cos(a), Math.sin(a), 0);
+
+                const nail = new THREE.Group();
+                const steel = mat(0xaab2bc, 0.3, 0.9);
+                nail.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.55, 12), steel));
+                const head = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.04, 16), steel);
+                head.position.y = 0.295;
+                nail.add(head);
+                nail.rotation.z = a - Math.PI / 2;
+                wh.add(nail);
+
+                const patch = new THREE.Group();
+                const patchMat = mat(0xff6a00, 0.6, 0.1, { emissive: 0xff6a00, emissiveIntensity: 0.25 });
+                patch.add(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 16), patchMat));
+                const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.05, 40), patchMat);
+                cap.position.y = 0.03;
+                patch.add(cap);
+                patch.rotation.z = a - Math.PI / 2;
+                wh.add(patch);
+
+                update = (t) => {
+                    const cyc = t % 7;
+                    let nailExtra = 0, patchExtra = 0;
+                    nail.visible = true;
+                    patch.visible = false;
+                    if (cyc >= 2.5 && cyc < 3.5) {
+                        const p = cyc - 2.5;
+                        nailExtra = p * p * 1.8;
+                    } else if (cyc >= 3.5) {
+                        nail.visible = false;
+                        patch.visible = true;
+                        patchExtra = (1 - easeOut(cyc - 3.5)) * 1.3;
+                        patchMat.emissiveIntensity = 0.25 + 0.2 * Math.sin(t * 5);
+                    }
+                    nail.position.copy(dir).multiplyScalar(r + 0.12 + nailExtra);
+                    patch.position.copy(dir).multiplyScalar(r + patchExtra);
+                };
+            }
+
+            if (id === 4) {
+                // ЗБЕРІГАННЯ: стопка шин на стелажі, верхня опускається
+                baseX = 0.5;
+                const tires = [];
+                for (let i = 0; i < 3; i++) {
+                    const t = makeTire(cfg);
+                    t.rotation.x = Math.PI / 2;
+                    t.position.y = (i - 1) * (w + 0.03);
+                    g.add(t);
+                    tires.push(t);
+                }
+                const topY = tires[2].position.y;
+
+                const wood = mat(0x8a5a2b, 0.85, 0.05);
+                const plankY = -(w + 0.03) - w / 2 - 0.08;
+                const plank = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.12, 2.2), wood);
+                plank.position.y = plankY;
+                g.add(plank);
+                [-1.5, 1.5].forEach(x => {
+                    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.5, 2.0), mat(0x5b6570, 0.5, 0.6));
+                    leg.position.set(x, plankY - 0.3, 0);
+                    g.add(leg);
+                });
+
+                const tag = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.28, 0.04), mat(0xffb400, 0.5, 0.1, { emissive: 0xffb400, emissiveIntensity: 0.2 }));
+                tag.position.set(outerR + cfg.tube + 0.15, 0, 0.3);
+                tag.rotation.y = 0.4;
+                g.add(tag);
+
+                g.position.y = 0.25;
+                update = (t) => {
+                    const cyc = t % 5;
+                    tires[2].position.y = topY + (cyc < 1.4 ? (1 - easeOut(cyc / 1.4)) * 1.6 : 0);
+                };
+            }
+
+            if (id === 5) {
+                // АЗОТ: балон, шланг і потік блакитних частинок у шину
+                const s = 1.2 / (cfg.rim + cfg.tube * 1.85);
+                const wh = new THREE.Group();
+                wh.add(makeRim(cfg), makeTire(cfg));
+                wh.scale.setScalar(s);
+                wh.position.x = 0.8;
+                g.add(wh);
+
+                const tank = new THREE.Group();
+                const blue = mat(0x2a7fff, 0.35, 0.6);
+                tank.add(new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 1.5, 32), blue));
+                const dome = new THREE.Mesh(new THREE.SphereGeometry(0.38, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), blue);
+                dome.position.y = 0.75;
+                tank.add(dome);
+                const band = new THREE.Mesh(new THREE.CylinderGeometry(0.39, 0.39, 0.3, 32), mat(0xf4f6f8, 0.5, 0.1));
+                band.position.y = 0.1;
+                tank.add(band);
+                const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.2, 16), mat(0xc9d1da, 0.3, 0.9));
+                valve.position.y = 1.05;
+                tank.add(valve);
+                const handle = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.025, 8, 24), mat(0xff7a1a, 0.4, 0.3));
+                handle.position.y = 1.18;
+                handle.rotation.x = Math.PI / 2;
+                tank.add(handle);
+                tank.position.set(-1.9, -0.2, 0);
+                g.add(tank);
+
+                const curve = new THREE.CatmullRomCurve3([
+                    new THREE.Vector3(-1.9, 0.95, 0),
+                    new THREE.Vector3(-1.5, 1.55, 0.1),
+                    new THREE.Vector3(-0.8, 1.2, 0.3),
+                    new THREE.Vector3(-0.4, 0.1, 0.25)
+                ]);
+                g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.035, 8, false), mat(0x15191e, 0.7, 0.1)));
+
+                const pMat = mat(0x66c4ff, 0.3, 0.2, { emissive: 0x33aaff, emissiveIntensity: 0.9 });
+                const particles = [];
+                for (let i = 0; i < 12; i++) {
+                    const p = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 10), pMat);
+                    g.add(p);
+                    particles.push(p);
+                }
+
+                update = (t, dt) => {
+                    wh.rotation.z -= dt * 0.8;
+                    particles.forEach((p, i) => {
+                        const u = (t * 0.35 + i / particles.length) % 1;
+                        p.position.copy(curve.getPoint(u));
+                        p.scale.setScalar(0.7 + 0.5 * Math.sin(u * Math.PI));
+                    });
+                };
+            }
+
+            if (id === 6) {
+                // ПРОКАТКА ДИСКІВ: голий диск і притискний ролик
+                const rim = makeRim(cfg);
+                g.add(rim);
+
+                const rollerR = 0.32;
+                const rollerGeo = new THREE.CylinderGeometry(rollerR, rollerR, w * 0.7, 32);
+                rollerGeo.rotateX(Math.PI / 2);
+                const roller = new THREE.Mesh(rollerGeo, mat(0x3a4048, 0.3, 0.9));
+                const arm = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.16, 0.16), mat(0x5a6470, 0.4, 0.8));
+                arm.position.x = 0.45;
+                const rollerG = new THREE.Group();
+                rollerG.add(roller, arm);
+                const rx = cfg.rim + rollerR + 0.01;
+                rollerG.position.x = rx;
+                g.add(rollerG);
+                g.position.x = -0.4;
+
+                const lipMat = rim.userData.lipMat;
+                update = (t) => {
+                    rim.rotation.z = -t * 3;
+                    roller.rotation.z = t * 3 * cfg.rim / rollerR;
+                    const press = (Math.sin(t * 2) + 1) / 2;
+                    rollerG.position.x = rx - press * 0.03;
+                    lipMat.emissiveIntensity = press * 0.8;
+                };
+            }
+
+            return { group: g, update: update, baseX: baseX };
+        }
+
+        function setScene() {
+            if (!scene) return;
+            if (current) {
+                pivot.remove(current.group);
+                disposeGroup(current.group);
+            }
+            const id = selectedServices.length ? focusService : 0;
+            current = buildScene(id, carTypes[currentCarType]);
+            pivot.add(current.group);
+            sceneTime = 0;
+            popScale = 0.55;
+            document.getElementById('heroChip').innerText = sceneLabels[id] + ' · ' + carTypes[currentCarType].short;
+        }
+
+        function initWheel() {
+            const canvas = document.getElementById('wheelCanvas');
+            try {
+                if (typeof THREE === 'undefined') throw new Error('no three');
+                renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            } catch (e) {
+                canvas.style.display = 'none';
+                document.getElementById('heroFallback').style.display = 'flex';
+                return;
+            }
+
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+            camera.position.set(0, 0.2, 5.6);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const key = new THREE.DirectionalLight(0xffffff, 1.1);
+            key.position.set(3, 4, 5);
+            scene.add(key);
+            const fillBlue = new THREE.PointLight(0x4aa8ff, 0.9, 20);
+            fillBlue.position.set(-4, -1, 3);
+            scene.add(fillBlue);
+            const warm = new THREE.PointLight(0xff8a33, 0.7, 20);
+            warm.position.set(4, -2, -2);
+            scene.add(warm);
+
+            pivot = new THREE.Group();
+            scene.add(pivot);
+
+            setScene();
+            resizeWheel();
+            window.addEventListener('resize', resizeWheel);
+
+            canvas.addEventListener('pointerdown', e => {
+                dragging = true; lastX = e.clientX; lastY = e.clientY;
+                canvas.setPointerCapture(e.pointerId);
+            });
+            canvas.addEventListener('pointermove', e => {
+                if (!dragging) return;
+                dragY += (e.clientX - lastX) * 0.012;
+                dragX = Math.max(-0.7, Math.min(0.7, dragX + (e.clientY - lastY) * 0.008));
+                lastX = e.clientX; lastY = e.clientY;
+            });
+            const stop = () => { dragging = false; };
+            canvas.addEventListener('pointerup', stop);
+            canvas.addEventListener('pointercancel', stop);
+
+            lastFrame = performance.now();
+            requestAnimationFrame(animateWheel);
+        }
+
+        function resizeWheel() {
+            if (!renderer) return;
+            const canvas = renderer.domElement;
+            const w = canvas.clientWidth || 300;
+            const h = canvas.clientHeight || 240;
+            renderer.setSize(w, h, false);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+        }
+
+        function animateWheel(now) {
+            requestAnimationFrame(animateWheel);
+            const dt = Math.min(0.05, (now - lastFrame) / 1000);
+            lastFrame = now;
+            sceneTime += dt;
+            if (current) {
+                current.update(sceneTime, dt);
+                pivot.rotation.x = current.baseX + dragX;
+            }
+            pivot.rotation.y = baseY + dragY + Math.sin(sceneTime * 0.5) * 0.45;
+            popScale += (1 - popScale) * 0.12;
+            pivot.scale.setScalar(popScale);
+            renderer.render(scene, camera);
+        }
+
+        /* ================= APP ================= */
+        function initApp() {
+            renderServices();
+            updateSummary();
+            initWheel();
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+                if (tg.colorScheme === 'dark') document.body.classList.add('dark-theme');
+            }
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
+        }
+
+        function setCarType(type, mult, el) {
+            document.querySelectorAll('.radio-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            currentMultiplier = mult;
+            currentCarType = type;
+            setScene();
+            renderServices();
+            updateSummary();
+        }
+
+        function renderServices() {
+            const listContainer = document.getElementById('servicesList');
+            listContainer.innerHTML = '';
+
+            baseServices.forEach(s => {
+                const finalPrice = Math.round(s.basePrice * currentMultiplier);
+                const isSelected = selectedServices.includes(s.id);
+                const isFocused = isSelected && focusService === s.id;
+
+                const card = document.createElement('div');
+                card.className = 'service-card' + (isSelected ? ' selected' : '') + (isFocused ? ' focused' : '');
+                card.onclick = () => toggleService(s.id);
+
+                card.innerHTML = `
+                    <div class="service-icon">${s.icon}</div>
+                    <div class="service-info">
+                        <h3>${s.name}</h3>
+                        <p>${s.desc}${s.time ? ' • ' + s.time : ''}</p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="service-price">${finalPrice} ₴</div>
+                        <div class="checkbox-custom"></div>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+        function toggleService(id) {
+            const index = selectedServices.indexOf(id);
+            if (index > -1) {
+                selectedServices.splice(index, 1);
+                if (focusService === id) {
+                    focusService = selectedServices.length ? selectedServices[selectedServices.length - 1] : 0;
+                }
+            } else {
+                selectedServices.push(id);
+                focusService = id;
+            }
+            setScene();
+            renderServices();
+            updateSummary();
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            currentTab = tabId;
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            const tabMap = { 'catalog': 0, 'booking': 1, 'orders': 2 };
+            document.querySelectorAll('.tab')[tabMap[tabId]].classList.add('active');
+
+            updateMainButton();
+        }
+
+        function selectSlot(time, el) {
+            document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedSlotTime = time;
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            selectedServices.forEach(id => {
+                const s = baseServices.find(item => item.id === id);
+                if (s) total += Math.round(s.basePrice * currentMultiplier);
+            });
+            return total;
+        }
+
+        function calculateTime() {
+            let minutes = 0;
+            selectedServices.forEach(id => {
+                const s = baseServices.find(item => item.id === id);
+                if (s) minutes += s.minutes;
+            });
+            return minutes > 0 ? minutes + ' хв' : '—';
+        }
+
+        function updateSummary() {
+            const total = calculateTotal();
+            document.getElementById('summaryCount').innerText = selectedServices.length;
+            document.getElementById('summaryTime').innerText = calculateTime();
+            document.getElementById('summaryTotal').innerText = total + ' ₴';
+            updateMainButton();
+        }
+
+        function updateMainButton() {
+            const btn = document.getElementById('mainButton');
+            const total = calculateTotal();
+
+            if (currentTab === 'catalog') {
+                btn.innerText = `Оформити запис (${total} ₴)`;
+            } else if (currentTab === 'booking') {
+                btn.innerText = `Підтвердити замовлення (${total} ₴)`;
+            } else {
+                btn.innerText = `Перейти до каталогу`;
+            }
+        }
+
+        function handleMainButtonClick() {
+            if (currentTab === 'catalog') {
+                switchTab('booking');
+            } else if (currentTab === 'booking') {
+                createOrder();
+            } else {
+                switchTab('catalog');
+            }
+        }
+
+      async function createOrder() {
+            if (selectedServices.length === 0) {
+                alert('Помилка: оберіть хоча б одну послугу!');
+                switchTab('catalog');
+                return;
+            }
+
+            const carInput = document.getElementById('carNumber');
+            const phoneInput = document.getElementById('clientPhone');
+
+            const carNum = carInput ? carInput.value.trim() : '';
+            const phone = phoneInput ? phoneInput.value.trim() : '';
+
+            const carPlaceholder = carInput ? (carInput.getAttribute('placeholder') || '').trim().toUpperCase() : '';
+            const phonePlaceholder = phoneInput ? (phoneInput.getAttribute('placeholder') || '').trim() : '';
+
+            const cleanCar = carNum.toUpperCase().replace(/\s+/g, ' ').trim();
+            const carRegex = /^[A-ZА-ЯІЇЄ]{2}\s?\d{4}\s?[A-ZА-ЯІЇЄ]{2}$/u;
+
+            if (!cleanCar || cleanCar === carPlaceholder || !carRegex.test(cleanCar)) {
+                alert('Помилка: введіть правильний номер авто (наприклад, AA 7777 OH), а не підказку чи короткий текст!');
+                if (carInput) {
+                    carInput.focus();
+                }
+                return;
+            }
+
+            const digitsOnly = phone.replace(/[^\d]/g, '');
+
+            if (!phone || phone === phonePlaceholder || digitsOnly.length < 10 || digitsOnly.length > 13) {
+                alert('Помилка: введіть коректний номер телефону (від 10 до 13 цифр), а не підказку!');
+                if (phoneInput) {
+                    phoneInput.focus();
+                }
+                return;
+            }
+
+            const post = document.getElementById('postNumber') ? document.getElementById('postNumber').value : 'Пост 1';
+            const total = calculateTotal();
+            const serviceNames = selectedServices.map(id => baseServices.find(s => s.id === id).name).join(', ');
+
+            const newOrder = {
+                id: 'TM-' + Math.floor(1000 + Math.random() * 9000),
+                car: cleanCar,
+                car_type: currentCarType,
+                post: post,
+                time: selectedSlotTime,
+                phone: phone,
+                services: serviceNames,
+                total: total,
+                status: 'new'
+            };
+
+            const createdFromServer = await sendOrderToServer(newOrder);
+            if (createdFromServer && createdFromServer.id) {
+                newOrder.id = createdFromServer.id;
+            }
+
+            orders.unshift(newOrder);
+            saveOrdersLocal();
+            renderOrders();
+            const countEl = document.getElementById('ordersCount');
+            if (countEl) countEl.innerText = orders.length;
+
+            if (carInput) carInput.value = '';
+            if (phoneInput) phoneInput.value = '';
+
+            switchTab('orders');
+            alert('Запис успішно створено!');
+        }        
+
+       function renderOrders() {
+            const list = document.getElementById('myOrdersList');
+            if (!list) return;
+
+            if (orders.length === 0) {
+                list.innerHTML = `<div class="empty-state">У вас поки немає активних записів.</div>`;
+                return;
+            }
+
+            list.innerHTML = '';
+            orders.forEach(o => {
+                const isCancelled = o.status === 'cancelled';
+                const card = document.createElement('div');
+                card.className = 'form-section';
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong>Замовлення #${o.id}</strong>
+                        <span class="status-badge ${isCancelled ? 'status-cancelled' : 'status-new'}">${isCancelled ? 'Скасовано' : 'Нова заявка'}</span>
+                    </div>
+                    <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 4px;">🚗 Авто: <strong>${o.car}</strong> | ${o.post}</p>
+                    <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 4px;">🕒 Час: <strong>сьогодні о ${o.time}</strong></p>
+                    <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 8px;">🛠 Послуги: ${o.services}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 8px; font-weight: 700;">
+                        <span>Сума:</span>
+                        <span style="color: var(--primary-color);">${o.total} ₴</span>
+                    </div>
+                    ${!isCancelled ? `
+                        <button type="button" onclick="cancelOrder('${o.id}')" style="margin-top: 10px; width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #d9534f; background: transparent; color: #d9534f; font-weight: 600; cursor: pointer;">
+                            Скасувати запис
+                        </button>
+                    ` : ''}
+                `;
+                list.appendChild(card);
+            });
+        }
+ async function cancelOrder(orderId) {
+            if (!orderId) return;
+
+            const order = orders.find(item => String(item.id) === String(orderId));
+
+            try {
+                const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(order || { id: orderId })
+                });
+
+                if (!res.ok) {
+                    alert('Не вдалося скасувати запис на сервері.');
+                    return;
+                }
+
+                if (order) {
+                    order.status = 'cancelled';
+                    saveOrdersLocal();
+                }
+                renderOrders();
+                alert('Запис скасовано. Адміністратору надіслано сповіщення.');
+            } catch (e) {
+                console.error('Помилка скасування:', e);
+                alert('Помилка з’єднання при скасуванні запису.');
+            }
+        }      
+ function fillTestData() {
+            document.getElementById('carNumber').value = 'AI 7777 BM';
+            document.getElementById('clientPhone').value = '+380 63 555 35 35';
+            selectedServices = [1, 3];
+            focusService = 3;
+            setScene();
+            renderServices();
+            updateSummary();
+            alert('Тестові дані успішно підставлені!');
+        }
+
+        window.onload = initApp;
+function saveOrdersLocal() {
+    try {
+        localStorage.setItem('tiremaster_orders', JSON.stringify(orders));
+    } catch (e) {}
+}
+
+function loadOrdersLocal() {
+    try {
+        const raw = localStorage.getItem('tiremaster_orders');
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                orders.length = 0;
+                orders.push(...parsed);
+                if (typeof renderOrders === 'function') renderOrders();
+                const countEl = document.getElementById('ordersCount');
+                if (countEl) countEl.innerText = orders.length;
+            }
+        }
+    } catch (e) {}
+}
+
+// Завантаження цін із сервера та відновлення локальних записів
+async function syncWithServer() {
+    loadOrdersLocal();
+
+    try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        if (data.prices_by_car) {
+            window.serverPrices = data.prices_by_car;
+            if (typeof renderServices === 'function') renderServices();
+        }
+    } catch (e) {
+        console.log('Працюємо в локальному режимі', e);
+    }
+}
+
+// Відправка замовлення на сервер і в Telegram майстру
+async function sendOrderToServer(orderObj) {
+    saveOrdersLocal();
+    try {
+        const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderObj)
+        });
+        if (res.ok) {
+            return await res.json();
+        }
+    } catch (e) {
+        console.error('Помилка відправки замовлення:', e);
+    }
+    return null;
+}
+
+window.addEventListener('DOMContentLoaded', syncWithServer);
+window.addEventListener('load', () => {
+    setTimeout(loadOrdersLocal, 100);
+});  </script>
+</body>
+</html>
+```[cite: 1]
+
